@@ -1,0 +1,24 @@
+<resources>
+    <style name="Dekho" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:colorBackground">@color/ink</item>
+    </style>
+    <style name="RowLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.14</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+    <style name="Row">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:clipChildren">false</item>
+        <item name="android:clipToPadding">false</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+</resources>

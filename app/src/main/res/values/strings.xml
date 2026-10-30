@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Dekho</string>
+    <string name="service_name">Dekho Home button</string>
+    <string name="service_description">Sends the remote\'s Home button to Dekho.</string>
+</resources>
