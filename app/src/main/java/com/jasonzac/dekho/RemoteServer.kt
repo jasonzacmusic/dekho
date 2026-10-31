@@ -104,6 +104,7 @@ class RemoteServer(private val service: HomeButtonService, private val remote: T
             "app" -> main.post { service.switchTo(query.getValue("p")) }
             "input" -> main.post { service.switchToPort(query.getValue("i")) }
             "strip" -> main.post { service.toggleStrip() }
+            "brightness" -> main.post { service.openBrightness() }
             "pair" -> return json(JSONObject().put("paired", remote.pair()))
         }
         return json(JSONObject().put("ok", true))

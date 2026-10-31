@@ -56,3 +56,5 @@ the address can control the TV. Avoid using it on shared Wi-Fi.
 `gradle assembleRelease` with `ANDROID_HOME` set and `ANDROID_SDK_ROOT` unset.
 
 While the TV is on, Dekho watches for AirPods nearby and connects your paired pair as soon as they come out of the case.
+
+The TV keeps a separate brightness for each picture mode, including Dolby Vision. The Brightness tile in the strip and the Brightness button on the phone remote open the TV's slider over whatever is playing, so you can adjust the mode in use without stopping it.

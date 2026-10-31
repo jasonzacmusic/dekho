@@ -46,13 +46,14 @@ class QuickStrip(private val service: HomeButtonService) {
 
         val apps = shelf.apps().filter { it.packageName != null }
         val ports = shelf.ports()
-        val width = minOf(dp(128), (service.resources.displayMetrics.widthPixels - dp(48)) / (apps.size + ports.size) - dp(12))
+        val width = minOf(dp(128), (service.resources.displayMetrics.widthPixels - dp(48)) / (apps.size + ports.size + 1) - dp(12))
         apps.forEach { app ->
             row.addView(tile(context, app.name, app, width) { service.switchTo(app.packageName!!) })
         }
         ports.forEach { port ->
             row.addView(tile(context, port.device ?: port.label, null, width) { service.switchToPort(port.id) })
         }
+        row.addView(tile(context, "Brightness", null, width) { service.openBrightness() })
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,

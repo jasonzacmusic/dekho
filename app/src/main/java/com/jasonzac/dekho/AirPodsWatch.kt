@@ -1,5 +1,6 @@
 package com.jasonzac.dekho
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -34,7 +35,11 @@ class AirPodsWatch(private val context: Context) {
     }
 
     private val screen = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, intent: Intent) = refresh()
+        override fun onReceive(c: Context, intent: Intent) {
+            // The TV switches Bluetooth off in standby, which ends any scan without a word.
+            if (intent.action == BluetoothAdapter.ACTION_STATE_CHANGED) scanning = false
+            refresh()
+        }
     }
 
     fun start() {
@@ -42,6 +47,7 @@ class AirPodsWatch(private val context: Context) {
         context.registerReceiver(screen, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
         })
         refresh()
     }
@@ -58,13 +64,14 @@ class AirPodsWatch(private val context: Context) {
     }
 
     private fun startScan() {
-        if (scanning) return
+        val scanner = adapter?.bluetoothLeScanner
+        if (scanning || scanner == null) return
         val filter = ScanFilter.Builder()
             .setManufacturerData(APPLE, byteArrayOf(PROXIMITY_PAIRING), byteArrayOf(-1))
             .build()
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
         try {
-            adapter?.bluetoothLeScanner?.startScan(listOf(filter), settings, sighting)
+            scanner.startScan(listOf(filter), settings, sighting)
             scanning = true
         } catch (e: SecurityException) {
             Log.w(TAG, "no permission to look for AirPods", e)

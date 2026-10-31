@@ -44,6 +44,7 @@ input{flex:1;min-width:0;font:16px inherit;color:var(--cream);background:var(--t
 <div class="row">
 <button data-key="4">Back</button><button data-key="3">Home</button><button id="strip">Apps</button><button data-key="85">Play</button>
 <button data-key="25">Vol −</button><button data-key="24">Vol +</button><button data-key="164">Mute</button><button data-key="26">Power</button>
+<button id="bright" style="grid-column:1/-1">Brightness</button>
 </div>
 <h2>Type on the TV</h2>
 <div class="type"><input id="text" placeholder="Select a box on the TV, type here" autocapitalize="off" autocomplete="off" autocorrect="off"><button id="send">Send</button></div>
@@ -61,6 +62,7 @@ function tile(box,name,go,dot){const b=document.createElement('button');
  b.append(name);b.onclick=go;$(box).append(b)}
 document.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>press(b.dataset.key));
 $('strip').onclick=()=>get('strip');
+$('bright').onclick=()=>get('brightness');
 $('send').onclick=async()=>{const t=$('text').value;if(!t)return;
  await get('type',{method:'POST',body:encodeURIComponent(t)});note('Sent to the TV.');$('text').value=''};
 $('start').onclick=async()=>{note('Watch the TV, it will ask to allow this…');

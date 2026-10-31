@@ -311,10 +311,8 @@ class HomeActivity : Activity() {
         return tile
     }
 
-    // The TV's own slider is the only thing that moves its backlight.
     private fun openBrightness() {
-        launch(Intent(Settings.ACTION_DISPLAY_SETTINGS))
-        HomeButtonService.running?.pressBrightnessRow()
+        HomeButtonService.running?.openBrightness() ?: launch(Intent(Settings.ACTION_DISPLAY_SETTINGS))
     }
 
     private fun openStockHome() {

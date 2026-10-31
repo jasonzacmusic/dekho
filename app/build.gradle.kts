@@ -10,7 +10,7 @@ android {
         applicationId = "com.jasonzac.dekho"
         minSdk = 28
         targetSdk = 35
-        versionCode = 10
+        versionCode = 12
         versionName = "1.9"
     }
 

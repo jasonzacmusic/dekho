@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -80,6 +81,13 @@ class HomeButtonService : AccessibilityService() {
         previousApp = inFront
     }
 
+    // The TV's own slider is the only thing that moves its backlight. It opens over the
+    // app that is playing, so it adjusts the picture mode in use without stopping anything.
+    fun openBrightness() {
+        startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        pressBrightnessRow()
+    }
+
     fun toggleStrip() = if (strip.showing) strip.hide() else strip.show()
 
     /** Asks the TV to allow the remote. The owner answers on screen. */
@@ -92,11 +100,11 @@ class HomeButtonService : AccessibilityService() {
 
     // The panel fills in a moment after it appears. Press once only, and only on the
     // Picture page: a press on the Brightness page itself would move a slider.
-    fun pressBrightnessRow(attemptsLeft: Int = 20) {
+    private fun pressBrightnessRow(attemptsLeft: Int = 20) {
         val panel = rootInActiveWindow?.takeIf { it.packageName == SETTINGS_APP }
-        val title = panel?.findAccessibilityNodeInfosByViewId("$SETTINGS_APP:id/page_title")?.firstOrNull()
-        if (title?.text?.toString() == "Picture") {
-            var row = panel.findAccessibilityNodeInfosByText("Brightness").firstOrNull()
+        if (panel?.findAccessibilityNodeInfosByText("Picture Preset")?.isNotEmpty() == true) {
+            var row = panel.findAccessibilityNodeInfosByText("Brightness")
+                .firstOrNull { it.text?.toString() == "Brightness" }
             while (row != null && !row.isClickable) row = row.parent
             if (row != null) {
                 row.performAction(AccessibilityNodeInfo.ACTION_CLICK)
