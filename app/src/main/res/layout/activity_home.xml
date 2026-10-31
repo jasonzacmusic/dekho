@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ink"
+    android:background="@drawable/backdrop"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:gravity="center_vertical"
@@ -15,7 +15,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="16dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -23,10 +23,12 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:id="@+id/selected"
             android:fontFamily="serif"
+            android:singleLine="true"
             android:text="@string/app_name"
             android:textColor="@color/cream"
-            android:textSize="24sp" />
+            android:textSize="38sp" />
 
         <TextClock
             android:layout_width="wrap_content"
@@ -35,7 +37,7 @@
             android:format24Hour="EEE d MMM"
             android:layout_marginEnd="14dp"
             android:textColor="@color/muted"
-            android:textSize="14sp" />
+            android:textSize="16sp" />
 
         <TextClock
             android:layout_width="wrap_content"
@@ -44,69 +46,18 @@
             android:format12Hour="h:mm a"
             android:format24Hour="HH:mm"
             android:textColor="@color/cream"
-            android:textSize="20sp" />
+            android:textSize="24sp" />
     </LinearLayout>
 
     <TextView style="@style/RowLabel" android:text="Watch" />
 
     <LinearLayout android:id="@+id/apps" style="@style/Row" />
 
-    <TextView style="@style/RowLabel" android:layout_marginTop="18dp" android:text="Inputs" />
+    <TextView style="@style/RowLabel" android:layout_marginTop="20dp" android:text="Inputs" />
 
     <LinearLayout android:id="@+id/inputs" style="@style/Row" />
 
-    <TextView style="@style/RowLabel" android:layout_marginTop="18dp" android:text="Picture" />
-
-    <LinearLayout
-        android:id="@+id/brightness"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:background="@drawable/tile_bg"
-        android:duplicateParentState="false"
-        android:focusable="true"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp">
-
-        <ImageView
-            android:id="@+id/brightness_icon"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:src="@drawable/ic_sun" />
-
-        <TextView
-            android:id="@+id/brightness_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="18dp"
-            android:fontFamily="sans-serif-medium"
-            android:text="Brightness"
-            android:textColor="@color/cream"
-            android:textSize="15sp" />
-
-        <ProgressBar
-            android:id="@+id/brightness_bar"
-            style="@android:style/Widget.Material.ProgressBar.Horizontal"
-            android:layout_width="0dp"
-            android:layout_height="8dp"
-            android:layout_weight="1"
-            android:max="100"
-            android:progressBackgroundTint="@color/off"
-            android:progressTint="@color/saffron" />
-
-        <TextView
-            android:id="@+id/brightness_value"
-            android:layout_width="44dp"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:gravity="end"
-            android:textColor="@color/cream"
-            android:textSize="15sp" />
-    </LinearLayout>
-
-    <TextView style="@style/RowLabel" android:layout_marginTop="18dp" android:text="Settings" />
+    <TextView style="@style/RowLabel" android:layout_marginTop="20dp" android:text="Settings" />
 
     <LinearLayout android:id="@+id/quick" style="@style/Row" />
 

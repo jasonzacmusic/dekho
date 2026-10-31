@@ -2,6 +2,7 @@ package com.jasonzac.dekho
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.content.res.ColorStateList
@@ -16,7 +17,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
@@ -24,15 +24,18 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 
+/** TCL has no standard shortcut to its Bluetooth page. */
+private val TCL_BLUETOOTH =
+    ComponentName("com.android.tv.settings", "com.tcl.settings.accessories.AccessoriesActivity")
+
+/** What is plugged into each port, for devices that do not announce themselves. */
+private val HDMI_NAMES = mapOf("HDMI 2" to "Apple TV")
+
 /** One app on the Watch row, found by the name it shows on the TV. */
 private data class Watch(val name: String, val matches: (String) -> Boolean, val storeId: String)
-
-/** Each screen press changes brightness by this much. */
-private const val BRIGHTNESS_STEP = 5
 
 class HomeActivity : Activity() {
 
@@ -45,17 +48,12 @@ class HomeActivity : Activity() {
     )
 
     private val tv by lazy { getSystemService(TvInputManager::class.java) }
-    private val brightness by lazy { Brightness(this) }
     private val handler = Handler(Looper.getMainLooper())
 
+    private lateinit var selected: TextView
     private lateinit var appsRow: LinearLayout
     private lateinit var inputsRow: LinearLayout
     private lateinit var quickRow: LinearLayout
-    private lateinit var brightnessTile: View
-    private lateinit var brightnessBar: ProgressBar
-    private lateinit var brightnessValue: TextView
-    private lateinit var brightnessName: TextView
-    private lateinit var brightnessIcon: ImageView
 
     private var inputDots = mapOf<String, View>()
     private var inputStates = mutableMapOf<String, Int>()
@@ -76,25 +74,19 @@ class HomeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
+        selected = findViewById(R.id.selected)
         appsRow = findViewById(R.id.apps)
         inputsRow = findViewById(R.id.inputs)
         quickRow = findViewById(R.id.quick)
-        brightnessTile = findViewById(R.id.brightness)
-        brightnessBar = findViewById(R.id.brightness_bar)
-        brightnessValue = findViewById(R.id.brightness_value)
-        brightnessName = findViewById(R.id.brightness_name)
-        brightnessIcon = findViewById(R.id.brightness_icon)
-
         buildQuickRow()
-        setupBrightness()
     }
 
     override fun onResume() {
         super.onResume()
         HomeButtonService.showingStockHome = false
+        HomeButtonService.setDekhoIsHome(this, true)
         refreshApps()
         refreshInputs()
-        paintBrightness()
         tv?.registerCallback(inputWatcher, handler)
         if (currentFocus == null) appsRow.getChildAt(0)?.requestFocus()
     }
@@ -105,6 +97,7 @@ class HomeActivity : Activity() {
     }
 
     // This is the home screen, so Back has nowhere to go.
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun onBackPressed() = Unit
 
     // --- Watch row ---
@@ -151,7 +144,7 @@ class HomeActivity : Activity() {
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${watch.storeId}")))
             }
         }
-        tile.growOnFocus()
+        tile.growOnFocus(watch.name)
         return tile
     }
 
@@ -169,11 +162,15 @@ class HomeActivity : Activity() {
         ports.forEachIndexed { i, port ->
             // A device that names itself over the cable shows up as a child of its port.
             val device = all.firstOrNull { it.parentId == port.id }?.loadLabel(this)?.toString()
+                ?: HDMI_NAMES[port.loadLabel(this).toString()]
             val state = tv!!.getInputState(port.id)
             inputStates[port.id] = state
             val tile = inputTile(port, device)
+            // Down from each input lands on the settings tile beneath it.
+            val below = i * (quickRow.childCount - 1) / maxOf(ports.size - 1, 1)
+            tile.nextFocusDownId = quickRow.getChildAt(below).id
             dots[port.id] = tile.findViewWithTag("dot")
-            inputsRow.addView(tile, rowParams(i, 0f, 62))
+            inputsRow.addView(tile, rowParams(i, 0f, 84))
         }
         inputDots = dots
         ports.forEach { paintDot(it.id, inputStates.getValue(it.id)) }
@@ -199,19 +196,21 @@ class HomeActivity : Activity() {
             setBackgroundResource(R.drawable.dot)
         }, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(12) })
 
-        val words = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val name = tileLabel(port.loadLabel(this).toString()).apply { textSize = 17f }
+        val words = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            isDuplicateParentStateEnabled = true
+        }
+        val name = tileLabel(port.loadLabel(this).toString()).apply { textSize = 22f }
         words.addView(name)
         val sub = tileLabel(device ?: "").apply {
-            textSize = 12f
-            alpha = 0.7f
+            textSize = 14f
             visibility = if (device == null) View.GONE else View.VISIBLE
         }
         words.addView(sub)
         tile.addView(words)
 
         tile.setOnClickListener { openInput(port.id) }
-        tile.growOnFocus()
+        tile.growOnFocus(device?.let { "$it · ${port.loadLabel(this)}" } ?: port.loadLabel(this).toString())
         return tile
     }
 
@@ -227,68 +226,58 @@ class HomeActivity : Activity() {
     private fun openInput(inputId: String) =
         launch(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId)))
 
-    // --- Picture row ---
-
-    private fun setupBrightness() {
-        brightnessTile.growOnFocus(1.02f)
-        brightnessTile.setOnFocusChangeListener { v, hasFocus ->
-            v.animateGrow(hasFocus, 1.02f)
-            val ink = getColor(if (hasFocus) R.color.on_focus else R.color.cream)
-            brightnessName.setTextColor(ink)
-            brightnessValue.setTextColor(ink)
-            brightnessIcon.imageTintList = ColorStateList.valueOf(ink)
-        }
-        brightnessTile.setOnKeyListener { _, code, event ->
-            val step = when (code) {
-                KeyEvent.KEYCODE_DPAD_LEFT -> -BRIGHTNESS_STEP
-                KeyEvent.KEYCODE_DPAD_RIGHT -> BRIGHTNESS_STEP
-                else -> return@setOnKeyListener false
-            }
-            if (event.action == KeyEvent.ACTION_DOWN) {
-                brightness.set(brightness.get() + step)
-                paintBrightness()
-            }
-            true
-        }
-    }
-
-    private fun paintBrightness() {
-        val level = brightness.get()
-        brightnessBar.progress = level
-        brightnessValue.text = level.toString()
-    }
-
     // --- Settings row ---
 
     private fun buildQuickRow() {
         val tiles = listOf(
+            Triple("Brightness", R.drawable.ic_sun) { openBrightness() },
+            Triple("Picture", R.drawable.ic_display) { launch(Intent(Settings.ACTION_DISPLAY_SETTINGS)) },
             Triple("Wi-Fi", R.drawable.ic_wifi) { launch(Intent(Settings.ACTION_WIFI_SETTINGS)) },
-            Triple("Bluetooth", R.drawable.ic_bluetooth) { launch(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) },
+            Triple("Bluetooth", R.drawable.ic_bluetooth) { launch(Intent().setComponent(TCL_BLUETOOTH)) },
             Triple("Sound", R.drawable.ic_sound) { launch(Intent(Settings.ACTION_SOUND_SETTINGS)) },
-            Triple("Display", R.drawable.ic_display) { launch(Intent(Settings.ACTION_DISPLAY_SETTINGS)) },
             Triple("All settings", R.drawable.ic_settings) { launch(Intent(Settings.ACTION_SETTINGS)) },
             Triple("Google TV", R.drawable.ic_grid) { openStockHome() },
         )
         tiles.forEachIndexed { i, (name, icon, action) ->
-            quickRow.addView(quickTile(name, icon, action), rowParams(i, 0f, 62))
+            quickRow.addView(quickTile(name, icon, action), rowParams(i, 0f, 96))
         }
     }
 
     private fun quickTile(name: String, icon: Int, action: () -> Unit): View {
         val tile = LinearLayout(this).apply {
+            id = View.generateViewId()
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             isFocusable = true
             setBackgroundResource(R.drawable.tile_bg)
         }
-        tile.addView(ImageView(this).apply { setImageResource(icon) }, LinearLayout.LayoutParams(dp(22), dp(22)))
+        tile.addView(ImageView(this).apply {
+            setImageResource(icon)
+            imageTintList = focusInk()
+            isDuplicateParentStateEnabled = true
+        }, LinearLayout.LayoutParams(dp(28), dp(28)))
         tile.addView(tileLabel(name).apply {
-            textSize = 12f
-            setPadding(0, dp(4), 0, 0)
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(0, dp(6), 0, 0)
         })
         tile.setOnClickListener { action() }
-        tile.growOnFocus()
+        if (name == "Google TV") {
+            tile.setOnLongClickListener {
+                HomeButtonService.setDekhoIsHome(this, false)
+                Toast.makeText(this, "Google TV is your home screen. Open Dekho from Apps to switch back.", Toast.LENGTH_LONG).show()
+                openStockHome()
+                true
+            }
+        }
+        tile.growOnFocus(name)
         return tile
+    }
+
+    // The TV's own slider is the only thing that moves its backlight.
+    private fun openBrightness() {
+        launch(Intent(Settings.ACTION_DISPLAY_SETTINGS))
+        HomeButtonService.running?.pressBrightnessRow()
     }
 
     private fun openStockHome() {
@@ -315,15 +304,15 @@ class HomeActivity : Activity() {
         text = words
         fontFeatureSettings = "tnum"
         typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-        // Dark on the bright focused tile, cream otherwise.
-        setTextColor(
-            ColorStateList(
-                arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
-                intArrayOf(getColor(R.color.on_focus), getColor(R.color.cream)),
-            ),
-        )
+        setTextColor(focusInk())
         isDuplicateParentStateEnabled = true
     }
+
+    // Dark on the bright focused tile, cream otherwise.
+    private fun focusInk() = ColorStateList(
+        arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+        intArrayOf(getColor(R.color.on_focus), getColor(R.color.cream)),
+    )
 
     private fun rowParams(index: Int, aspect: Float, heightDp: Int = 0): LinearLayout.LayoutParams {
         val width = (resources.displayMetrics.widthPixels - dp(80) - dp(14) * 4) / 5f
@@ -343,13 +332,16 @@ class HomeActivity : Activity() {
         clipToOutline = true
     }
 
-    private fun View.growOnFocus(scale: Float = 1.06f) {
-        setOnFocusChangeListener { v, hasFocus -> v.animateGrow(hasFocus, scale) }
+    private fun View.growOnFocus(name: String) {
+        setOnFocusChangeListener { v, hasFocus ->
+            v.animateGrow(hasFocus, 1.08f)
+            if (hasFocus) selected.text = name
+        }
     }
 
     private fun View.animateGrow(grown: Boolean, scale: Float) {
         val target = if (grown) scale else 1f
-        elevation = if (grown) dp(8).toFloat() else 0f
+        elevation = if (grown) dp(12).toFloat() else 0f
         animate().scaleX(target).scaleY(target).setDuration(130)
             .setInterpolator(DecelerateInterpolator()).start()
     }

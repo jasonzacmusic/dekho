@@ -4,8 +4,6 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
