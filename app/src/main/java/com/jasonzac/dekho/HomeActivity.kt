@@ -1,10 +1,14 @@
 package com.jasonzac.dekho
 
 import android.app.Activity
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ResolveInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Outline
@@ -55,6 +59,15 @@ class HomeActivity : Activity() {
     private lateinit var inputsRow: LinearLayout
     private lateinit var quickRow: LinearLayout
 
+    private lateinit var wifiNote: TextView
+    private lateinit var bluetoothNote: TextView
+    private val headphones by lazy { Headphones(this) { handler.post { paintConnections() } } }
+    private val network by lazy { getSystemService(ConnectivityManager::class.java) }
+    private val networkWatcher = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(n: Network) { handler.post { paintConnections() } }
+        override fun onLost(n: Network) { handler.post { paintConnections() } }
+    }
+
     private var inputDots = mapOf<String, View>()
     private var inputStates = mutableMapOf<String, Int>()
 
@@ -79,6 +92,7 @@ class HomeActivity : Activity() {
         inputsRow = findViewById(R.id.inputs)
         quickRow = findViewById(R.id.quick)
         buildQuickRow()
+        requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 1)
     }
 
     override fun onResume() {
@@ -88,11 +102,16 @@ class HomeActivity : Activity() {
         refreshApps()
         refreshInputs()
         tv?.registerCallback(inputWatcher, handler)
+        headphones.start()
+        network.registerDefaultNetworkCallback(networkWatcher)
+        paintConnections()
         if (currentFocus == null) appsRow.getChildAt(0)?.requestFocus()
     }
 
     override fun onPause() {
         tv?.unregisterCallback(inputWatcher)
+        headphones.stop()
+        network.unregisterNetworkCallback(networkWatcher)
         super.onPause()
     }
 
@@ -233,13 +252,34 @@ class HomeActivity : Activity() {
             Triple("Brightness", R.drawable.ic_sun) { openBrightness() },
             Triple("Picture", R.drawable.ic_display) { launch(Intent(Settings.ACTION_DISPLAY_SETTINGS)) },
             Triple("Wi-Fi", R.drawable.ic_wifi) { launch(Intent(Settings.ACTION_WIFI_SETTINGS)) },
-            Triple("Bluetooth", R.drawable.ic_bluetooth) { launch(Intent().setComponent(TCL_BLUETOOTH)) },
+            Triple("Bluetooth", R.drawable.ic_bluetooth) { connectHeadphones() },
             Triple("Sound", R.drawable.ic_sound) { launch(Intent(Settings.ACTION_SOUND_SETTINGS)) },
             Triple("All settings", R.drawable.ic_settings) { launch(Intent(Settings.ACTION_SETTINGS)) },
             Triple("Google TV", R.drawable.ic_grid) { openStockHome() },
         )
         tiles.forEachIndexed { i, (name, icon, action) ->
             quickRow.addView(quickTile(name, icon, action), rowParams(i, 0f, 96))
+        }
+    }
+
+    private fun paintConnections() {
+        val online = network.getNetworkCapabilities(network.activeNetwork)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        paintNote(wifiNote, if (online) "Connected" else "Offline", online)
+        val phones = headphones.connectedName()
+        paintNote(bluetoothNote, phones ?: "Not connected", phones != null)
+    }
+
+    private fun paintNote(note: TextView, words: String, good: Boolean) {
+        note.text = words
+        note.alpha = if (good) 1f else 0.65f
+    }
+
+    private fun connectHeadphones() {
+        if (headphones.connectedName() != null || !headphones.connect()) {
+            launch(Intent().setComponent(TCL_BLUETOOTH))
+        } else {
+            paintNote(bluetoothNote, "Connecting…", false)
         }
     }
 
@@ -261,7 +301,23 @@ class HomeActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(0, dp(6), 0, 0)
         })
+        val note = tileLabel("").apply {
+            textSize = 12f
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dp(6), dp(2), dp(6), 0)
+        }
+        if (name == "Wi-Fi") wifiNote = note
+        if (name == "Bluetooth") bluetoothNote = note
+        if (name == "Wi-Fi" || name == "Bluetooth") tile.addView(note)
         tile.setOnClickListener { action() }
+        if (name == "Bluetooth") {
+            tile.setOnLongClickListener {
+                launch(Intent().setComponent(TCL_BLUETOOTH))
+                true
+            }
+        }
         if (name == "Google TV") {
             tile.setOnLongClickListener {
                 HomeButtonService.setDekhoIsHome(this, false)
