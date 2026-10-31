@@ -5,15 +5,12 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.ResolveInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Outline
-import android.media.tv.TvContract
-import android.media.tv.TvInputInfo
 import android.media.tv.TvInputManager
 import android.net.Uri
 import android.os.Bundle
@@ -35,23 +32,11 @@ import android.widget.Toast
 private val TCL_BLUETOOTH =
     ComponentName("com.android.tv.settings", "com.tcl.settings.accessories.AccessoriesActivity")
 
-/** What is plugged into each port, for devices that do not announce themselves. */
-private val HDMI_NAMES = mapOf("HDMI 2" to "Apple TV")
-
-/** One app on the Watch row, found by the name it shows on the TV. */
-private data class Watch(val name: String, val matches: (String) -> Boolean, val storeId: String)
-
 class HomeActivity : Activity() {
 
-    private val watchList = listOf(
-        Watch("Prime Video", { "prime video" in it }, "com.amazon.amazonvideo.livingroom"),
-        Watch("Netflix", { "netflix" in it }, "com.netflix.ninja"),
-        Watch("JioHotstar", { "hotstar" in it }, "in.startv.hotstar"),
-        Watch("Sony LIV", { "sony liv" in it || "sonyliv" in it }, "com.sonyliv"),
-        Watch("YouTube", { it == "youtube" }, "com.google.android.youtube.tv"),
-    )
-
     private val tv by lazy { getSystemService(TvInputManager::class.java) }
+    private val shelf by lazy { Shelf(this) }
+    private val prefs by lazy { Prefs(this) }
     private val handler = Handler(Looper.getMainLooper())
 
     private lateinit var selected: TextView
@@ -98,7 +83,7 @@ class HomeActivity : Activity() {
     override fun onResume() {
         super.onResume()
         HomeButtonService.showingStockHome = false
-        HomeButtonService.setDekhoIsHome(this, true)
+        prefs.dekhoIsHome = true
         refreshApps()
         refreshInputs()
         tv?.registerCallback(inputWatcher, handler)
@@ -124,46 +109,41 @@ class HomeActivity : Activity() {
     private fun refreshApps() {
         val focused = appsRow.indexOfChild(appsRow.findFocus())
         appsRow.removeAllViews()
-        val installed = packageManager.queryIntentActivities(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0,
-        )
-        watchList.forEachIndexed { i, watch ->
-            val found = installed.firstOrNull { watch.matches(it.loadLabel(packageManager).toString().lowercase()) }
-            appsRow.addView(appTile(watch, found), rowParams(i, 16f / 9f))
+        val apps = shelf.apps()
+        apps.forEachIndexed { i, app ->
+            appsRow.addView(appTile(app), rowParams(i, 16f / 9f, columns = maxOf(apps.size, 5)))
         }
         if (focused >= 0) appsRow.getChildAt(focused)?.requestFocus()
     }
 
-    private fun appTile(watch: Watch, app: ResolveInfo?): View {
+    private fun appTile(app: ShelfApp): View {
         val tile = FrameLayout(this).apply {
             isFocusable = true
             foreground = getDrawable(R.drawable.app_ring)
             setBackgroundColor(getColor(R.color.tile))
             roundCorners()
         }
-        val art = app?.activityInfo?.loadBanner(packageManager)
-            ?: app?.activityInfo?.applicationInfo?.loadBanner(packageManager)
-        if (art != null) {
+        if (app.art != null) {
             tile.addView(ImageView(this).apply {
-                setImageDrawable(art)
+                setImageDrawable(app.art)
                 scaleType = ImageView.ScaleType.CENTER_CROP
             }, FrameLayout.LayoutParams(-1, -1))
         } else {
             tile.addView(TextView(this).apply {
-                text = if (app == null) "${watch.name}\nGet app" else watch.name
+                text = if (app.packageName == null) "${app.name}\nGet app" else app.name
                 gravity = Gravity.CENTER
                 setTextColor(getColor(R.color.cream))
                 textSize = 15f
             }, FrameLayout.LayoutParams(-1, -1))
         }
         tile.setOnClickListener {
-            if (app != null) {
-                launch(packageManager.getLeanbackLaunchIntentForPackage(app.activityInfo.packageName))
+            if (app.packageName != null) {
+                launch(packageManager.getLeanbackLaunchIntentForPackage(app.packageName))
             } else {
-                launch(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${watch.storeId}")))
+                launch(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${app.storeId}")))
             }
         }
-        tile.growOnFocus(watch.name)
+        tile.growOnFocus(app.name)
         return tile
     }
 
@@ -172,19 +152,13 @@ class HomeActivity : Activity() {
     private fun refreshInputs() {
         val focused = inputsRow.indexOfChild(inputsRow.findFocus())
         inputsRow.removeAllViews()
-        val all = tv?.tvInputList.orEmpty()
-        val ports = all.filter { it.type == TvInputInfo.TYPE_HDMI && it.parentId == null }
-            .sortedBy { it.loadLabel(this).toString() }
+        val ports = shelf.ports()
 
         val dots = mutableMapOf<String, View>()
         inputStates.clear()
         ports.forEachIndexed { i, port ->
-            // A device that names itself over the cable shows up as a child of its port.
-            val device = all.firstOrNull { it.parentId == port.id }?.loadLabel(this)?.toString()
-                ?: HDMI_NAMES[port.loadLabel(this).toString()]
-            val state = tv!!.getInputState(port.id)
-            inputStates[port.id] = state
-            val tile = inputTile(port, device)
+            inputStates[port.id] = port.state
+            val tile = inputTile(port)
             // Down from each input lands on the settings tile beneath it.
             val below = i * (quickRow.childCount - 1) / maxOf(ports.size - 1, 1)
             tile.nextFocusDownId = quickRow.getChildAt(below).id
@@ -202,7 +176,8 @@ class HomeActivity : Activity() {
         if (focused >= 0) inputsRow.getChildAt(focused)?.requestFocus()
     }
 
-    private fun inputTile(port: TvInputInfo, device: String?): View {
+    private fun inputTile(port: ShelfPort): View {
+        val device = port.device
         val tile = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -219,7 +194,7 @@ class HomeActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             isDuplicateParentStateEnabled = true
         }
-        val name = tileLabel(port.loadLabel(this).toString()).apply { textSize = 22f }
+        val name = tileLabel(port.label).apply { textSize = 22f }
         words.addView(name)
         val sub = tileLabel(device ?: "").apply {
             textSize = 14f
@@ -229,7 +204,7 @@ class HomeActivity : Activity() {
         tile.addView(words)
 
         tile.setOnClickListener { openInput(port.id) }
-        tile.growOnFocus(device?.let { "$it · ${port.loadLabel(this)}" } ?: port.loadLabel(this).toString())
+        tile.growOnFocus(device?.let { "$it · ${port.label}" } ?: port.label)
         return tile
     }
 
@@ -242,8 +217,7 @@ class HomeActivity : Activity() {
         inputDots[inputId]?.backgroundTintList = ColorStateList.valueOf(getColor(color))
     }
 
-    private fun openInput(inputId: String) =
-        launch(Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId)))
+    private fun openInput(inputId: String) = launch(Shelf.portIntent(inputId))
 
     // --- Settings row ---
 
@@ -256,6 +230,7 @@ class HomeActivity : Activity() {
             Triple("Sound", R.drawable.ic_sound) { launch(Intent(Settings.ACTION_SOUND_SETTINGS)) },
             Triple("All settings", R.drawable.ic_settings) { launch(Intent(Settings.ACTION_SETTINGS)) },
             Triple("Google TV", R.drawable.ic_grid) { openStockHome() },
+            Triple("Customise", R.drawable.ic_tune) { launch(Intent(this, CustomiseActivity::class.java)) },
         )
         tiles.forEachIndexed { i, (name, icon, action) ->
             quickRow.addView(quickTile(name, icon, action), rowParams(i, 0f, 96))
@@ -277,10 +252,15 @@ class HomeActivity : Activity() {
 
     private fun connectHeadphones() {
         if (headphones.connectedName() != null || !headphones.connect()) {
-            launch(Intent().setComponent(TCL_BLUETOOTH))
+            openBluetoothPage()
         } else {
             paintNote(bluetoothNote, "Connecting…", false)
         }
+    }
+
+    private fun openBluetoothPage() {
+        val tcl = Intent().setComponent(TCL_BLUETOOTH)
+        launch(if (tcl.resolveActivity(packageManager) != null) tcl else Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
     }
 
     private fun quickTile(name: String, icon: Int, action: () -> Unit): View {
@@ -314,13 +294,13 @@ class HomeActivity : Activity() {
         tile.setOnClickListener { action() }
         if (name == "Bluetooth") {
             tile.setOnLongClickListener {
-                launch(Intent().setComponent(TCL_BLUETOOTH))
+                openBluetoothPage()
                 true
             }
         }
         if (name == "Google TV") {
             tile.setOnLongClickListener {
-                HomeButtonService.setDekhoIsHome(this, false)
+                prefs.dekhoIsHome = false
                 Toast.makeText(this, "Google TV is your home screen. Open Dekho from Apps to switch back.", Toast.LENGTH_LONG).show()
                 openStockHome()
                 true
@@ -364,14 +344,10 @@ class HomeActivity : Activity() {
         isDuplicateParentStateEnabled = true
     }
 
-    // Dark on the bright focused tile, cream otherwise.
-    private fun focusInk() = ColorStateList(
-        arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
-        intArrayOf(getColor(R.color.on_focus), getColor(R.color.cream)),
-    )
+    private fun focusInk() = getColorStateList(R.color.focus_ink)
 
-    private fun rowParams(index: Int, aspect: Float, heightDp: Int = 0): LinearLayout.LayoutParams {
-        val width = (resources.displayMetrics.widthPixels - dp(80) - dp(14) * 4) / 5f
+    private fun rowParams(index: Int, aspect: Float, heightDp: Int = 0, columns: Int = 5): LinearLayout.LayoutParams {
+        val width = (resources.displayMetrics.widthPixels - dp(80) - dp(14) * (columns - 1)) / columns.toFloat()
         val height = if (aspect > 0f) (width / aspect).toInt() else dp(heightDp)
         return LinearLayout.LayoutParams(0, height, 1f).apply {
             if (index > 0) marginStart = dp(14)

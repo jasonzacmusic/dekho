@@ -1,41 +1,70 @@
 package com.jasonzac.dekho
 
 import android.accessibilityservice.AccessibilityService
-import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import kotlin.concurrent.thread
 
 /**
- * Sends the remote's Home button to Dekho, and comes back to Dekho whenever
- * Google's home screen appears on its own (after switching the TV on, for example).
+ * Keeps Dekho as the home screen: sends the remote's Home button here, comes back when
+ * Google's screen appears by itself, and runs the quick-switch strip and the phone remote.
  */
 class HomeButtonService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
-
-    override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode != KeyEvent.KEYCODE_HOME || !dekhoIsHome(this)) return false
-        if (event.action == KeyEvent.ACTION_UP) openDekho()
-        return true
-    }
-
-    override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val stockHomeOpened = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            event.packageName == STOCK_HOME
-        if (stockHomeOpened && !showingStockHome && dekhoIsHome(this)) openDekho()
-    }
+    private val prefs by lazy { Prefs(this) }
+    private val strip by lazy { QuickStrip(this) }
+    private val remote by lazy { TvRemote(this) }
+    private var server: RemoteServer? = null
+    private var inFront = ""
 
     override fun onServiceConnected() {
         running = this
+        server = RemoteServer(this, remote).also { it.start() }
     }
 
     override fun onDestroy() {
         running = null
+        strip.hide()
+        server?.stop()
         super.onDestroy()
+    }
+
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode != KeyEvent.KEYCODE_HOME || !prefs.dekhoIsHome) return false
+        if (event.action == KeyEvent.ACTION_UP) {
+            // First Home over an app offers the strip; a second one goes all the way home.
+            if (inFront in QUIET_SCREENS || strip.showing) {
+                strip.hide()
+                openDekho()
+            } else {
+                strip.show()
+            }
+        }
+        return true
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val app = event.packageName?.toString() ?: return
+        if (app != SYSTEM_UI && !strip.showing) inFront = app
+        if (app in STOCK_HOMES && !showingStockHome && prefs.dekhoIsHome) openDekho()
+    }
+
+    override fun onInterrupt() = Unit
+
+    fun toggleStrip() = if (strip.showing) strip.hide() else strip.show()
+
+    /** Asks the TV to allow the remote. The owner answers on screen. */
+    fun pairInBackground(done: (Boolean) -> Unit) {
+        thread {
+            val paired = remote.pair()
+            handler.post { done(paired) }
+        }
     }
 
     // The panel fills in a moment after it appears. Press once only, and only on the
@@ -54,8 +83,6 @@ class HomeButtonService : AccessibilityService() {
         if (attemptsLeft > 0) handler.postDelayed({ pressBrightnessRow(attemptsLeft - 1) }, 200)
     }
 
-    override fun onInterrupt() = Unit
-
     private fun openDekho() {
         showingStockHome = false
         startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -63,18 +90,14 @@ class HomeButtonService : AccessibilityService() {
 
     companion object {
         const val STOCK_HOME = "com.google.android.apps.tv.launcherx"
+        private val STOCK_HOMES = setOf(STOCK_HOME, "com.google.android.tvlauncher", "com.android.tv.launcher")
+        private const val SYSTEM_UI = "com.android.systemui"
         private const val SETTINGS_APP = "com.android.tv.settings"
+        private val QUIET_SCREENS = STOCK_HOMES + SETTINGS_APP + "com.jasonzac.dekho" + ""
 
         /** True while the Google TV tile has deliberately opened Google's own home screen. */
         @Volatile
         var showingStockHome = false
-
-        /** False once Google TV has been chosen as the home screen again. */
-        fun dekhoIsHome(context: Context) =
-            context.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean("dekho", true)
-
-        fun setDekhoIsHome(context: Context, value: Boolean) =
-            context.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putBoolean("dekho", value).apply()
 
         /** The live service, when the Home button setting is on. */
         @Volatile

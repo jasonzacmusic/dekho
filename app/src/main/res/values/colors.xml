@@ -9,4 +9,5 @@
     <color name="on_focus">#191511</color>
     <color name="live">#62C98A</color>
     <color name="off">#5A5247</color>
+    <color name="strip">#E6100E0C</color>
 </resources>

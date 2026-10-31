@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#100E0C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dekho Remote</title>
+<style>
+:root{--ink:#100E0C;--tile:#231c18;--edge:#ffffff1f;--cream:#F4EDE0;--muted:#b9ae9e;--saffron:#E9A23B;--live:#62C98A}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--ink);color:var(--cream);font:16px/1.3 -apple-system,system-ui,sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+main{max-width:420px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px 28px}
+h1{font:400 26px Georgia,serif;margin:0 0 14px}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+button{font:inherit;color:inherit;background:var(--tile);border:1px solid var(--edge);border-radius:12px;min-height:52px;padding:6px 8px;cursor:pointer}
+button:active{background:var(--saffron);color:#191511}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;aspect-ratio:1;margin:0 auto;max-width:300px}
+.pad button{font-size:24px}.pad .ok{border-radius:50%;background:var(--saffron);color:#191511;font-size:18px;font-weight:600}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5A5247;margin-right:6px}.dot.on{background:var(--live)}
+.type{display:flex;gap:8px}
+input{flex:1;min-width:0;font:16px inherit;color:var(--cream);background:var(--tile);border:1px solid var(--edge);border-radius:12px;padding:0 12px;min-height:52px;-webkit-user-select:text;user-select:text}
+.type button{padding:0 16px}
+#note{min-height:20px;margin-top:8px;font-size:14px;color:var(--muted)}
+#pair{display:none;background:var(--tile);border-radius:12px;padding:14px;margin-bottom:14px}
+#pair p{margin:0 0 10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Dekho</h1>
+<section id="pair">
+<p>Set up the remote. Press Start, then on the TV tick Always allow and press OK.</p>
+<button id="start">Start</button>
+</section>
+<div class="pad">
+<span></span><button data-key="19" aria-label="Up">▲</button><span></span>
+<button data-key="21" aria-label="Left">◀</button><button class="ok" data-key="23">OK</button><button data-key="22" aria-label="Right">▶</button>
+<span></span><button data-key="20" aria-label="Down">▼</button><span></span>
+</div>
+<div class="row">
+<button data-key="4">Back</button><button data-key="3">Home</button><button id="strip">Apps</button><button data-key="85">Play</button>
+<button data-key="25">Vol −</button><button data-key="24">Vol +</button><button data-key="164">Mute</button><button data-key="26">Power</button>
+</div>
+<h2>Type on the TV</h2>
+<div class="type"><input id="text" placeholder="Select a box on the TV, type here" autocapitalize="off" autocomplete="off" autocorrect="off"><button id="send">Send</button></div>
+<div id="note"></div>
+<h2>Apps</h2><div class="tiles" id="apps"></div>
+<h2>Inputs</h2><div class="tiles" id="inputs"></div>
+</main>
+<script>
+const base=location.pathname.replace(/\/$/,'')+'/',$=id=>document.getElementById(id),note=t=>$('note').textContent=t;
+const get=(p,o)=>fetch(base+p,o).then(r=>r.json());
+const press=c=>get('key?c='+c).catch(()=>note('Could not reach the TV.'));
+function tile(box,name,go,dot){const b=document.createElement('button');
+ if(dot!==undefined){const d=document.createElement('span');d.className='dot'+(dot?' on':'');b.append(d)}
+ b.append(name);b.onclick=go;$(box).append(b)}
+document.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>press(b.dataset.key));
+$('strip').onclick=()=>get('strip');
+$('send').onclick=async()=>{const t=$('text').value;if(!t)return;
+ await get('type',{method:'POST',body:encodeURIComponent(t)});note('Sent to the TV.');$('text').value=''};
+$('start').onclick=async()=>{note('Watch the TV, it will ask to allow this…');
+ const r=await get('pair');
+ if(r.paired){$('pair').style.display='none';note('Remote is ready.')}else note('The TV did not allow it. Press Start to try again.')};
+get('status').then(s=>{$('pair').style.display=s.paired?'none':'block';
+ s.apps.forEach(a=>tile('apps',a.name,()=>get('app?p='+encodeURIComponent(a.id))));
+ s.inputs.forEach(i=>tile('inputs',i.name,()=>get('input?i='+encodeURIComponent(i.id)),i.state===0))
+}).catch(()=>note('Could not reach the TV.'));
+</script>
+</body>
+</html>

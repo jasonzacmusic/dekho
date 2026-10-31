@@ -10,8 +10,8 @@ android {
         applicationId = "com.jasonzac.dekho"
         minSdk = 28
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
     buildTypes {
@@ -19,7 +19,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            // Private app for one TV: sideloaded, never published.
+            // Sideloaded from GitHub, never on the Play Store.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
