@@ -1,0 +1,34 @@
+name: Dekho
+options:
+  bundleIdPrefix: com.jasonzac
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: R3UNCZH45H
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    SWIFT_VERSION: "5.0"
+targets:
+  Dekho:
+    type: application
+    platform: iOS
+    sources:
+      - path: Dekho
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jasonzac.dekho
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Dekho
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Dekho talks to your TV over your home Wi-Fi.
+    info:
+      path: Dekho/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

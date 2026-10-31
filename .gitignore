@@ -3,3 +3,7 @@ build/
 local.properties
 *.apk
 .DS_Store
+
+*.xcodeproj/
+ios/Dekho/address.txt
+ios/Dekho/Info.plist
