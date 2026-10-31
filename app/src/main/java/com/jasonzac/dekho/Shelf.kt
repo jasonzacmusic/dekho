@@ -27,6 +27,7 @@ class Shelf(private val context: Context) {
         Default("Netflix", { "netflix" in it }, "com.netflix.ninja"),
         Default("JioHotstar", { "hotstar" in it }, "in.startv.hotstar"),
         Default("Sony LIV", { "sony liv" in it || "sonyliv" in it }, "com.sonyliv"),
+        Default("FanCode", { "fancode" in it }, "com.fancode.tv"),
         Default("YouTube", { it == "youtube" }, "com.google.android.youtube.tv"),
     )
 
