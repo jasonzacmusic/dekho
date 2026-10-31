@@ -18,14 +18,15 @@ Tested on one TCL 55C61B (Android TV 12) only.
 
 1. On the TV: Settings, System, About. Press **Android TV OS build** seven times.
 2. Back in Settings, System, Developer options: turn on **USB debugging**.
-3. Find the TV's address in Settings, Network and Internet. On a computer with `adb`, on the same Wi-Fi:
+3. Download the latest `.apk` from [Releases](https://github.com/jasonzacmusic/dekho/releases/latest).
+   Find the TV's address in Settings, Network and Internet. On a computer with `adb`, on the same Wi-Fi:
 
    ```bash
    adb connect TV-ADDRESS:5555
    ```
 
    ```bash
-   adb install app-release.apk
+   adb install dekho-1.6.apk
    ```
 
    The first time, the TV asks to allow the computer. Tick Always allow, then OK.
