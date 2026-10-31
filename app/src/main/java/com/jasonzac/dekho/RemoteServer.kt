@@ -101,8 +101,8 @@ class RemoteServer(private val service: HomeButtonService, private val remote: T
             "status" -> return json(status())
             "key" -> remote.key(query.getValue("c").toInt())
             "type" -> remote.type(URLDecoder.decode(body, "UTF-8"))
-            "app" -> main.post { shelf.openApp(query.getValue("p")) }
-            "input" -> main.post { shelf.openPort(query.getValue("i")) }
+            "app" -> main.post { service.switchTo(query.getValue("p")) }
+            "input" -> main.post { service.switchToPort(query.getValue("i")) }
             "strip" -> main.post { service.toggleStrip() }
             "pair" -> return json(JSONObject().put("paired", remote.pair()))
         }

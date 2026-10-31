@@ -22,6 +22,10 @@ class HomeButtonService : AccessibilityService() {
     private var server: RemoteServer? = null
     private var inFront = ""
 
+    /** The app to offer first, so Home then OK swaps straight back. */
+    var previousApp: String? = null
+        private set
+
     override fun onServiceConnected() {
         running = this
         server = RemoteServer(this, remote).also { it.start() }
@@ -39,6 +43,7 @@ class HomeButtonService : AccessibilityService() {
         if (event.action == KeyEvent.ACTION_UP) {
             // First Home over an app offers the strip; a second one goes all the way home.
             if (inFront in QUIET_SCREENS || strip.showing) {
+                noteLeaving(null)
                 strip.hide()
                 openDekho()
             } else {
@@ -56,6 +61,21 @@ class HomeButtonService : AccessibilityService() {
     }
 
     override fun onInterrupt() = Unit
+
+    fun switchTo(packageName: String) {
+        noteLeaving(packageName)
+        Shelf(this).openApp(packageName)
+    }
+
+    fun switchToPort(id: String) {
+        noteLeaving(null)
+        Shelf(this).openPort(id)
+    }
+
+    private fun noteLeaving(next: String?) {
+        if (inFront == next || inFront in QUIET_SCREENS) return
+        previousApp = inFront
+    }
 
     fun toggleStrip() = if (strip.showing) strip.hide() else strip.show()
 

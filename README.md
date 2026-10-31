@@ -8,6 +8,8 @@ Tested on one TCL 55C61B (Android TV 12) only.
 
 - **Home** on the remote over any app shows a strip of your apps and inputs along the bottom.
   Press Home again to go to Dekho. Back closes the strip.
+  The strip starts on the app you just left, so Home then OK swaps back. Prime Video comes back on
+  the title's page with Resume selected; Dekho never presses OK for you.
 - **Bluetooth** connects your paired headphones. Hold it to open the Bluetooth page.
 - **Google TV** visits Google's screen. Hold it to make Google TV the home screen again.
   Open Dekho from Apps to switch back.
@@ -26,7 +28,7 @@ Tested on one TCL 55C61B (Android TV 12) only.
    ```
 
    ```bash
-   adb install dekho-1.6.apk
+   adb install dekho-1.7.apk
    ```
 
    The first time, the TV asks to allow the computer. Tick Always allow, then OK.

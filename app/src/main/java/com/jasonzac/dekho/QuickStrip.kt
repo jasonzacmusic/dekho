@@ -1,6 +1,5 @@
 package com.jasonzac.dekho
 
-import android.accessibilityservice.AccessibilityService
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /** A slim row of apps and inputs that floats over whatever is playing. */
-class QuickStrip(private val service: AccessibilityService) {
+class QuickStrip(private val service: HomeButtonService) {
 
     private val windows = service.getSystemService(WindowManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
@@ -49,10 +48,10 @@ class QuickStrip(private val service: AccessibilityService) {
         val ports = shelf.ports()
         val width = minOf(dp(128), (service.resources.displayMetrics.widthPixels - dp(48)) / (apps.size + ports.size) - dp(12))
         apps.forEach { app ->
-            row.addView(tile(context, app.name, app, width) { shelf.openApp(app.packageName!!) })
+            row.addView(tile(context, app.name, app, width) { service.switchTo(app.packageName!!) })
         }
         ports.forEach { port ->
-            row.addView(tile(context, port.device ?: port.label, null, width) { shelf.openPort(port.id) })
+            row.addView(tile(context, port.device ?: port.label, null, width) { service.switchToPort(port.id) })
         }
 
         val params = WindowManager.LayoutParams(
@@ -64,7 +63,8 @@ class QuickStrip(private val service: AccessibilityService) {
         ).apply { gravity = Gravity.BOTTOM }
         windows.addView(row, params)
         strip = row
-        row.getChildAt(0)?.requestFocus()
+        val first = apps.indexOfFirst { it.packageName == service.previousApp }.coerceAtLeast(0)
+        row.getChildAt(first)?.requestFocus()
         restartTimer()
     }
 

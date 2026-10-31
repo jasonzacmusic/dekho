@@ -138,7 +138,8 @@ class HomeActivity : Activity() {
         }
         tile.setOnClickListener {
             if (app.packageName != null) {
-                launch(packageManager.getLeanbackLaunchIntentForPackage(app.packageName))
+                HomeButtonService.running?.switchTo(app.packageName)
+                    ?: launch(packageManager.getLeanbackLaunchIntentForPackage(app.packageName))
             } else {
                 launch(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${app.storeId}")))
             }
