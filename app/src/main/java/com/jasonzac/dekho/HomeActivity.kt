@@ -77,7 +77,7 @@ class HomeActivity : Activity() {
         inputsRow = findViewById(R.id.inputs)
         quickRow = findViewById(R.id.quick)
         buildQuickRow()
-        requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 1)
+        requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN), 1)
     }
 
     override fun onResume() {

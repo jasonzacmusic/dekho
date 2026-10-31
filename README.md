@@ -54,3 +54,5 @@ the address can control the TV. Avoid using it on shared Wi-Fi.
 ## Building
 
 `gradle assembleRelease` with `ANDROID_HOME` set and `ANDROID_SDK_ROOT` unset.
+
+While the TV is on, Dekho watches for AirPods nearby and connects your paired pair as soon as they come out of the case.

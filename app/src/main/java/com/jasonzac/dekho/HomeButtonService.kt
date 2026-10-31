@@ -19,6 +19,7 @@ class HomeButtonService : AccessibilityService() {
     private val prefs by lazy { Prefs(this) }
     private val strip by lazy { QuickStrip(this) }
     private val remote by lazy { TvRemote(this) }
+    private val airPods by lazy { AirPodsWatch(this) }
     private var server: RemoteServer? = null
     private var inFront = ""
 
@@ -29,12 +30,14 @@ class HomeButtonService : AccessibilityService() {
     override fun onServiceConnected() {
         running = this
         server = RemoteServer(this, remote).also { it.start() }
+        airPods.start()
     }
 
     override fun onDestroy() {
         running = null
         strip.hide()
         server?.stop()
+        airPods.stop()
         super.onDestroy()
     }
 
