@@ -37,7 +37,9 @@ Tested on one TCL 55C61B (Android TV 12) only.
 In Customise, press **Set up phone remote**. The TV asks to allow debugging: tick Always allow, then OK.
 Then open the address shown at the top of Customise in any browser on the same Wi-Fi.
 It has arrow keys, OK, Back, Home, volume, mute, power, your apps and inputs, and a box for typing
-usernames and passwords into the TV. Typing handles English letters, numbers and symbols only.
+usernames and passwords into the TV. Typing handles English letters, numbers and symbols only. Some sign-in screens, such as YouTube's,
+have their own keyboard and can turn capitals and symbols into plain letters and numbers. Use that
+app's sign in with your phone option there.
 
 Android TV's own remote service refuses anything running on the TV, so Dekho presses keys through
 the TV's debugging connection. That needs USB debugging left on.

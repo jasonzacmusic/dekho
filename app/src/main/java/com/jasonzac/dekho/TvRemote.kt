@@ -46,8 +46,15 @@ class TvRemote(context: Context) {
 
     /** Types into whichever box is selected on the TV. */
     fun type(text: String) {
-        val safe = text.replace(" ", "%s").replace("'", "'\\''")
-        shell("input text '$safe'")
+        text.chunked(TYPE_CHUNK).forEach { part ->
+            shell(part.map { letter -> "input text '${escape(letter)}'" }.joinToString(";"))
+        }
+    }
+
+    private fun escape(letter: Char) = when (letter) {
+        ' ' -> "%s"
+        '\'' -> "'\\''"
+        else -> letter.toString()
     }
 
     @Synchronized
@@ -174,6 +181,7 @@ class TvRemote(context: Context) {
 
     private companion object {
         const val PORT = 5555
+        const val TYPE_CHUNK = 100
         const val CNXN = 0x4e584e43
         const val AUTH = 0x48545541
         const val OPEN = 0x4e45504f

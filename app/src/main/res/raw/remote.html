@@ -23,6 +23,7 @@ button:active{background:var(--saffron);color:#191511}
 .type{display:flex;gap:8px}
 input{flex:1;min-width:0;font:16px inherit;color:var(--cream);background:var(--tile);border:1px solid var(--edge);border-radius:12px;padding:0 12px;min-height:52px;-webkit-user-select:text;user-select:text}
 .type button{padding:0 16px}
+.hint{margin:8px 0 0;font-size:13px;line-height:1.4;opacity:.7}
 #note{min-height:20px;margin-top:8px;font-size:14px;color:var(--muted)}
 #pair{display:none;background:var(--tile);border-radius:12px;padding:14px;margin-bottom:14px}
 #pair p{margin:0 0 10px}
@@ -46,6 +47,7 @@ input{flex:1;min-width:0;font:16px inherit;color:var(--cream);background:var(--t
 </div>
 <h2>Type on the TV</h2>
 <div class="type"><input id="text" placeholder="Select a box on the TV, type here" autocapitalize="off" autocomplete="off" autocorrect="off"><button id="send">Send</button></div>
+<p class="hint">Some sign-in screens, such as YouTube's, have their own keyboard and can turn capitals and symbols into plain letters and numbers. Choose sign in with your phone there.</p>
 <div id="note"></div>
 <h2>Apps</h2><div class="tiles" id="apps"></div>
 <h2>Inputs</h2><div class="tiles" id="inputs"></div>
